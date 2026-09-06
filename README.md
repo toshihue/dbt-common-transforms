@@ -11,7 +11,7 @@ Everything here is validated against Snowflake.
 |---|---|---|
 | `constant(key)` / `standard_constants()` | macro | 固定値セット — assign literals unconditionally |
 | `normalize_text(column)` | macro | 文字列加工 — trim + collapse whitespace incl. 全角スペース |
-| `zenkaku_to_hankaku(column)` | macro | 文字列加工 — 全角英数字 → 半角 |
+| `change_case(column, case)` | macro | 文字列加工 — lower / upper / initcap |
 | `fill_null(column, kind)` | macro | NULL埋め — typed defaults from vars |
 | `audit_columns()` | macro | standard audit columns |
 | `region_master.csv` | seed | 固定値の集合 — code master as version-controlled data |
@@ -43,33 +43,63 @@ Call the macros in a model. Prefix with the package name to make the
 dependency obvious at the call site:
 
 ```sql
--- models/customers_cleaned.sql
+-- models/members_cleaned.sql
 select
-    customer_id,
-    {{ common_transforms.normalize_text('customer_name') }}      as customer_name,
-    {{ common_transforms.zenkaku_to_hankaku('postal_code') }}    as postal_code,
-    {{ common_transforms.fill_null('region_code') }}             as region_code,
-    {{ common_transforms.fill_null('order_count', kind='number') }} as order_count,
+    member_id,
+    {{ common_transforms.change_case(
+         common_transforms.normalize_text('member_name'), case='initcap') }} as member_name,
+    {{ common_transforms.change_case('email', case='lower') }}       as email,
+    {{ common_transforms.change_case('member_code', case='upper') }} as member_code,
+    {{ common_transforms.fill_null('region_code', default_value='99') }} as region_code,
+    {{ common_transforms.fill_null('order_count', kind='number', default_value=0) }} as order_count,
     {{ common_transforms.standard_constants() }},
     {{ common_transforms.audit_columns() }}
-from {{ ref('stg_customers') }}
+from {{ ref('raw_members') }}
 ```
 
-Override the defaults from your own `dbt_project.yml`:
+See `examples/` for the complete, runnable version with a seed, a code-master
+join, and tests.
+
+### Required consumer config
+
+`constant()` and `standard_constants()` **require** a `constants` var in your
+own `dbt_project.yml`. They raise a compiler error without it — the values are
+organisation-specific and there is no sensible default:
+
+```yaml
+vars:
+  constants:
+    system_code: 'KIRIN01'
+    record_type: '1'
+    created_by: 'BATCH'
+```
+
+### Optional overrides
+
+The remaining macros work with no configuration. Override them if you want:
 
 ```yaml
 vars:
   unknown_string: '未設定'
-  constants:
-    system_code: 'KIRIN01'
-    created_by: 'BATCH'
+  unknown_number: 0
+  epoch_date: '1900-01-01'
 ```
+
+### Why the package's own vars are not your defaults
+
+Vars set in *this package's* `dbt_project.yml` do **not** propagate to your
+project. When a package macro calls `var('x')`, dbt resolves it against the
+**root** project's vars. This catches people out regularly: you install a
+package, see sensible-looking defaults in its `dbt_project.yml`, and they have
+no effect. Package macros that want to work unconfigured must pass a literal
+fallback — `var('unknown_string', 'UNKNOWN')` — which is what the macros here
+do, `constants` excepted.
 
 **Then look at the generated SQL** — this is the single most useful moment:
 
 ```sh
-dbt compile --select customers_cleaned
-# open target/compiled/<your_project>/models/customers_cleaned.sql
+dbt compile --select members_cleaned
+# open target/compiled/<your_project>/models/members_cleaned.sql
 ```
 
 A macro is a SQL *generator*, not a function the warehouse calls. Seeing the
@@ -181,6 +211,7 @@ Browser only, and it still exercises the entire create → publish → consume c
 - Validated on **Snowflake**
 - `require-dbt-version: ">=1.10.0,<3.0.0"` — installs on dbt Core 1.10+ and the
   Fusion engine
-- Uses `regexp_replace` and `translate`, which exist on most warehouses, but
-  whitespace-class and escaping behaviour differs by platform. Re-validate
-  before using on anything other than Snowflake.
+- Uses `regexp_replace`, `initcap`, `upper` and `lower`. All are widely
+  available, but regex whitespace classes and string-escaping rules differ by
+  platform — `normalize_text` in particular is Snowflake-specific in its
+  handling of `\x{3000}`. Re-validate before using on anything else.

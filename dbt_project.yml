@@ -11,17 +11,24 @@ macro-paths: ["macros"]
 seed-paths: ["seeds"]
 test-paths: ["tests"]
 
-# Defaults for the NULL-fill values. A consuming project can override any of
-# these in its own dbt_project.yml. Every macro also passes a literal fallback
-# to var(), so the package works even if the consumer sets nothing.
+# IMPORTANT: vars set here do NOT propagate to a consuming project. When a
+# macro in this package calls var('x'), dbt resolves it against the ROOT
+# project's vars, not this file. These entries are therefore only in effect
+# when this repo is run directly (e.g. its own integration tests) — they are
+# NOT defaults for consumers.
+#
+# Macros in this package cope with that by passing a literal fallback to the
+# two-argument form, var('unknown_string', 'UNKNOWN'), so they work with no
+# consumer configuration at all.
+#
+# The exception is `constants`, which has no safe fallback: system_code and
+# created_by are organisation-specific, and silently defaulting them would be
+# worse than failing. standard_constants() raises a compiler error if the
+# consuming project has not defined them. See README "Required consumer config".
 vars:
   unknown_string: 'UNKNOWN'
   unknown_number: -1
   epoch_date: '1900-01-01'
-
-  # 固定値セット — constants assigned unconditionally by constant() /
-  # standard_constants(). A consuming project overrides these, and they can
-  # differ per environment.
   constants:
     system_code: 'DEMO01'
     record_type: '1'
@@ -30,3 +37,11 @@ vars:
 seeds:
   common_transforms:
     +quote_columns: false
+    region_master:
+      # region_code must stay text. Under type inference '01' loads as the
+      # number 1 and stops matching the varchar codes it is joined against.
+      +column_types:
+        region_code: varchar(2)
+        region_name_ja: varchar(100)
+        region_name_en: varchar(100)
+        sort_order: integer

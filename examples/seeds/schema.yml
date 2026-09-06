@@ -1,0 +1,30 @@
+version: 2
+
+seeds:
+  - name: raw_members
+    description: >
+      Deliberately messy source data for exercising every common_transforms
+      component. Full-width characters, 全角スペース, inconsistent email casing,
+      a whitespace-only name, and NULLs in a string, a number and a date column.
+
+    config:
+      # column_types is not optional here. Left to type inference:
+      #   - region_code '02' becomes the number 2 and no longer joins to
+      #     region_master, whose codes are '01'..'99'
+      #   - postal_code and member_code lose their leading zeros
+      # Codes are text that happens to look numeric. Always declare them.
+      column_types:
+        member_id: integer
+        member_name: varchar(200)
+        email: varchar(200)
+        postal_code: varchar(20)
+        member_code: varchar(20)
+        region_code: varchar(2)
+        order_count: integer
+        last_login_date: date
+
+    columns:
+      - name: member_id
+        data_tests:
+          - unique
+          - not_null
