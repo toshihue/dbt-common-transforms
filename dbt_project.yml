@@ -1,0 +1,32 @@
+name: 'common_transforms'
+version: '0.1.0'
+config-version: 2
+
+# REQUIRED for the dbt Fusion engine. Fusion only installs packages whose
+# require-dbt-version range contains 2.0.0 — a package with no
+# require-dbt-version at all is rejected at `dbt deps`.
+require-dbt-version: ">=1.10.0,<3.0.0"
+
+macro-paths: ["macros"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+
+# Defaults for the NULL-fill values. A consuming project can override any of
+# these in its own dbt_project.yml. Every macro also passes a literal fallback
+# to var(), so the package works even if the consumer sets nothing.
+vars:
+  unknown_string: 'UNKNOWN'
+  unknown_number: -1
+  epoch_date: '1900-01-01'
+
+  # 固定値セット — constants assigned unconditionally by constant() /
+  # standard_constants(). A consuming project overrides these, and they can
+  # differ per environment.
+  constants:
+    system_code: 'DEMO01'
+    record_type: '1'
+    created_by: 'BATCH'
+
+seeds:
+  common_transforms:
+    +quote_columns: false

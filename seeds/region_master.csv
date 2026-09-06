@@ -1,0 +1,9 @@
+region_code,region_name_ja,region_name_en,sort_order
+01,北海道・東北,Hokkaido-Tohoku,1
+02,関東,Kanto,2
+03,中部,Chubu,3
+04,近畿,Kinki,4
+05,中国,Chugoku,5
+06,四国,Shikoku,6
+07,九州・沖縄,Kyushu-Okinawa,7
+99,不明,Unknown,99
