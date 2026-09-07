@@ -1,34 +1,40 @@
 {#
     固定値セットの共通部品
 
-    ETL tools (Informatica, DataStage, HULFT ...) call this a "constant" or
-    "fixed value" component: assign a literal to an output column
-    unconditionally, regardless of the input. This is NOT the same as NULL埋め,
-    which only fires when the input is NULL — see fill_null().
+    ETL ツール（Informatica、DataStage、HULFT など）で「固定値」「定数」
+    コンポーネントと呼ばれる処理に相当します。入力値に関係なく、出力列に
+    リテラルを常に設定します。
 
-    Two macros here:
+    NULL埋め とは別物です。fill_null() は入力が NULL のときだけ動作します
+    が、こちらは常に上書きします。
 
-    `constant(key)` — emit one named constant as a quoted SQL literal:
+    マクロは2つあります。
+
+    `constant(key)` — 名前付き定数を1つ、クォート済みの SQL リテラルとして
+    出力します:
 
         select
             customer_id,
             {{ common_transforms.constant('system_code') }} as system_code
         from {{ ref('stg_customers') }}
 
-    `standard_constants()` — emit the whole standard set at once:
+    `standard_constants()` — 定義済みの全定数をまとめて出力します:
 
         select
             customer_id,
             {{ common_transforms.standard_constants() }}
         from {{ ref('stg_customers') }}
 
-    The values live in vars, so a consuming project overrides them in its own
-    dbt_project.yml, and they can differ per environment:
+    値は vars に持たせているため、利用側プロジェクトの dbt_project.yml で
+    上書きでき、環境ごとに変えることもできます:
 
         vars:
           constants:
             system_code: 'KIRIN01'
             created_by:  'BATCH'
+
+    注意: standard_constants() は `constants` の全キーを出力します。同じ
+    キーに対して constant() を併用すると、同名の列が2つできてしまいます。
 #}
 
 {% macro constant(key) %}

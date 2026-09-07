@@ -1,26 +1,28 @@
 {#
     normalize_text: 文字列加工の共通部品
 
-    Trims leading/trailing whitespace, collapses any run of whitespace —
-    including the full-width space U+3000 (全角スペース) — into a single
-    half-width space, and turns the empty string into NULL.
+    前後の空白を除去し、全角スペース（U+3000）を含む連続した空白を半角
+    スペース1つに圧縮します。結果が空文字列になる場合は NULL を返します。
 
-    Usage:
+    使い方:
         select {{ common_transforms.normalize_text('customer_name') }} as customer_name
 
-    Why a macro: this rule has to be identical in every model. Written inline,
-    one model eventually gets it slightly wrong and nobody notices.
+    なぜマクロにするのか:
+    このルールは全モデルで完全に同一である必要があります。各モデルに直接
+    書くと、いつかどこかのモデルで微妙に異なる実装が混ざり、しかも誰も
+    気付きません。
 
-    Two details worth pointing out in the workshop:
+    ワークショップで触れておきたい実装上の注意点が2つあります。
 
-    1. `\s` alone does NOT match the full-width space on Snowflake.
-       regexp_replace(col, '\\s+', ' ') leaves 「山田　太郎」 untouched — which
-       is exactly the kind of bug that survives code review.
-    2. The backslash is doubled on purpose. Snowflake processes \x as a string
-       escape in the literal, so a single backslash fails with
-       "Invalid hex escape sequence '\x'". Doubling it means the regex engine
-       receives \x{3000}. Writing a literal 全角スペース inside the character
-       class also works, but puts an invisible character in your source.
+    1. Snowflake では `\s` だけでは全角スペースにマッチしません。
+       regexp_replace(col, '\\s+', ' ') は「山田　太郎」をそのまま返します。
+       レビューをすり抜けやすい典型的なバグです。
+    2. バックスラッシュを2重にしているのは意図的です。Snowflake は文字列
+       リテラル中の \x をエスケープとして解釈するため、1重だと
+       「Invalid hex escape sequence '\x'」で失敗します。2重にすることで
+       正規表現エンジンには \x{3000} が渡ります。
+       文字クラスに全角スペースをそのまま書いても動作しますが、ソース
+       コードに不可視文字が混入するため避けています。
 #}
 
 {% macro normalize_text(column) %}

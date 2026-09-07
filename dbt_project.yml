@@ -1,30 +1,29 @@
 name: 'common_transforms'
-version: '1.0.0'
+version: '1.1.0'
 config-version: 2
 
-# REQUIRED for the dbt Fusion engine. Fusion only installs packages whose
-# require-dbt-version range contains 2.0.0 — a package with no
-# require-dbt-version at all is rejected at `dbt deps`.
+# dbt Fusion エンジンでは必須です。Fusion は require-dbt-version の範囲に
+# 2.0.0 を含むパッケージしかインストールしません。require-dbt-version を
+# 書いていないパッケージは dbt deps の時点で拒否されます。
 require-dbt-version: ">=1.10.0,<3.0.0"
 
 macro-paths: ["macros"]
 seed-paths: ["seeds"]
 test-paths: ["tests"]
 
-# IMPORTANT: vars set here do NOT propagate to a consuming project. When a
-# macro in this package calls var('x'), dbt resolves it against the ROOT
-# project's vars, not this file. These entries are therefore only in effect
-# when this repo is run directly (e.g. its own integration tests) — they are
-# NOT defaults for consumers.
+# 重要: ここで設定した vars は利用側プロジェクトには伝播しません。
+# このパッケージのマクロが var('x') を呼ぶと、dbt は「ルートプロジェクト」の
+# vars を参照します。このファイルの値ではありません。したがって以下の設定は
+# このリポジトリを直接実行した場合にのみ有効で、利用側にとっての既定値では
+# ありません。
 #
-# Macros in this package cope with that by passing a literal fallback to the
-# two-argument form, var('unknown_string', 'UNKNOWN'), so they work with no
-# consumer configuration at all.
+# そのため各マクロは var() の2引数形式 var('unknown_string', 'UNKNOWN') で
+# リテラルのフォールバックを渡しており、利用側が何も設定しなくても動作します。
 #
-# The exception is `constants`, which has no safe fallback: system_code and
-# created_by are organisation-specific, and silently defaulting them would be
-# worse than failing. standard_constants() raises a compiler error if the
-# consuming project has not defined them. See README "Required consumer config".
+# 例外は `constants` です。system_code や created_by は組織固有の値であり、
+# 安全な既定値が存在しません。黙って既定値を使うより失敗させるべきなので、
+# 利用側が未定義の場合 standard_constants() はコンパイルエラーになります。
+# README の「利用側で必須の設定」を参照してください。
 vars:
   unknown_string: 'UNKNOWN'
   unknown_number: -1
@@ -38,8 +37,8 @@ seeds:
   common_transforms:
     +quote_columns: false
     region_master:
-      # region_code must stay text. Under type inference '01' loads as the
-      # number 1 and stops matching the varchar codes it is joined against.
+      # region_code は必ず文字列型にします。型推論に任せると '01' が数値の
+      # 1 として読み込まれ、varchar のコードとの結合が成立しなくなります。
       +column_types:
         region_code: varchar(2)
         region_name_ja: varchar(100)

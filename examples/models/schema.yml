@@ -3,43 +3,45 @@ version: 2
 models:
   - name: members_cleaned
     description: >
-      raw_members with every common_transforms component applied. Diff this
-      against the raw seed to see what each macro did.
+      raw_members に common_transforms の全部品を適用したモデルです。
+      元のシードと見比べると、各マクロが何をしたかが分かります。
 
     columns:
       - name: member_id
+        description: 主キー。
         data_tests:
           - unique
           - not_null
 
       - name: member_name
         description: >
-          全角 → 半角, whitespace collapsed, then initcap. member_id 4 is
-          whitespace-only in the source and comes through as NULL — that is
-          normalize_text's nullif doing its job, not a bug.
+          全角スペースを含む空白を圧縮したうえで initcap を適用しています。
+          member_id = 4 はソース上「空白のみ」なので NULL になります。
+          これは normalize_text の nullif が正しく動作した結果であり、
+          不具合ではありません。
         data_tests:
-          # Catches the NULL on member_id 4. warn rather than error: you want
-          # it visible on every run without breaking the build.
+          # member_id = 4 の NULL を検出します。error ではなく warn に
+          # しているのは、毎回可視化はしたいがビルドは止めたくないためです。
           - common_transforms.not_null_or_placeholder:
               config:
                 severity: warn
 
       - name: email
-        description: Lowercased, so it is safe to use as a join key.
+        description: 小文字に統一。結合キーとして安全に使えます。
         data_tests:
           - not_null
 
       - name: member_code
-        description: 全角 → 半角 then uppercased.
+        description: 大文字に統一したコード。
         data_tests:
           - unique
           - not_null
 
       - name: region_code
         description: >
-          NULL埋め with '99', which is itself a valid region_master code
-          (不明). Unknown regions therefore still resolve in the join instead
-          of dropping out of downstream reports.
+          NULL埋め の既定値に '99' を使っています。'99' は region_master に
+          実在するコード（不明）なので、地域不明の行も結合が成立し、下流の
+          レポートから消えません。
         data_tests:
           - not_null
           - relationships:
@@ -47,15 +49,19 @@ models:
               field: region_code
 
       - name: region_name_ja
-        description: Resolved from the region_master seed.
+        description: region_master シードから解決した地域名。
         data_tests:
           - not_null
 
       - name: order_count
+        description: NULL埋め。呼び出し箇所で既定値 0 を指定しています。
         data_tests:
           - not_null
+          # 自作の汎用テスト。件数が負になることはあり得ないため、
+          # 上流の不具合を検出できます。
+          - common_transforms.non_negative
 
       - name: last_login_date
-        description: NULL埋め with the epoch_date sentinel (1900-01-01).
+        description: NULL埋め。epoch_date（1900-01-01）を番兵値として使用。
         data_tests:
           - not_null
