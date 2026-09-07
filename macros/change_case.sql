@@ -1,22 +1,23 @@
 {#
     change_case: 大文字・小文字変換の共通部品
 
-    Normalizes the case of a text column. Parameterized rather than three
-    separate macros, so there is one component to learn and one place to change.
+    テキスト列の大文字・小文字を正規化します。3つのマクロに分けず引数で
+    切り替える設計にしているのは、覚える部品を1つに、変更箇所を1箇所に
+    するためです。
 
-    Usage:
-        {{ common_transforms.change_case('email') }}                     -- upper (default)
+    使い方:
+        {{ common_transforms.change_case('email') }}                     -- upper（既定）
         {{ common_transforms.change_case('email', case='lower') }}
         {{ common_transforms.change_case('first_name', case='initcap') }}
 
-    case: 'upper' (default) | 'lower' | 'initcap'
+    case: 'upper'（既定） | 'lower' | 'initcap'
 
-    Which one you want depends on the column:
-      - 'lower'   for email addresses and anything used as a join key
-      - 'upper'   for codes and identifiers
-      - 'initcap' for person and place names ('JIMMY c.' -> 'Jimmy C.')
+    どれを使うかは列の性質で決まります:
+      - 'lower'   メールアドレス、および結合キーに使う値
+      - 'upper'   コード類、識別子
+      - 'initcap' 人名・地名（'JIMMY c.' -> 'Jimmy C.'）
 
-    Composes with the other string components:
+    他の文字列部品と組み合わせて使えます:
         {{ common_transforms.change_case(
              common_transforms.normalize_text('first_name'), case='initcap') }}
 #}

@@ -1,46 +1,70 @@
 # common_transforms
 
-A small dbt package of reusable transformation components — and a worked example
-of **how to build a package of your own**.
+再利用可能な変換部品を集めた小さな dbt パッケージです。あわせて、**自分で
+パッケージを作る方法**の実例にもなっています。
 
-Everything here is validated against Snowflake.
+動作確認はすべて Snowflake で行っています。
 
-## What's in it
+## 収録している部品
 
-| Component | Type | 用途 |
+| 部品 | 種類 | 用途 |
 |---|---|---|
-| `constant(key)` / `standard_constants()` | macro | 固定値セット — assign literals unconditionally |
-| `normalize_text(column)` | macro | 文字列加工 — trim + collapse whitespace incl. 全角スペース |
-| `change_case(column, case)` | macro | 文字列加工 — lower / upper / initcap |
-| `fill_null(column, kind)` | macro | NULL埋め — typed defaults from vars |
-| `audit_columns()` | macro | standard audit columns |
-| `region_master.csv` | seed | 固定値の集合 — code master as version-controlled data |
-| `not_null_or_placeholder` | generic test | catch data that is NULL *or* still a placeholder |
+| `constant(key)` / `standard_constants()` | マクロ | 固定値セット — 入力に関係なくリテラルを設定 |
+| `normalize_text(column)` | マクロ | 文字列加工 — 前後空白の除去と、全角スペースを含む連続空白の圧縮 |
+| `change_case(column, case)` | マクロ | 文字列加工 — lower / upper / initcap |
+| `fill_null(column, kind)` | マクロ | NULL埋め — vars から型に応じた既定値 |
+| `audit_columns()` | マクロ | 標準的な監査列 |
+| `region_master.csv` | シード | 固定値の集合 — コードマスタをバージョン管理下のデータとして持つ |
+| `non_negative` | 汎用テスト | 負数を検出（自作テストの入門例） |
+| `not_null_or_placeholder` | 汎用テスト | NULL **または** プレースホルダのまま残っている行を検出 |
 
-Note that 固定値セット and NULL埋め are deliberately separate. `constant()` assigns
-a literal **always**; `fill_null()` only substitutes **when the input is NULL**.
-Conflating the two is a common source of quiet data bugs.
+固定値セット と NULL埋め をあえて別部品にしています。`constant()` は
+**常に**リテラルを設定し、`fill_null()` は**入力が NULL のときだけ**置換
+します。この2つを混同すると、原因の分かりにくいデータ不具合につながります。
+
+## 汎用テストの自作について
+
+同梱の2つのテストは「広く使われている標準的なテスト」ではなく、**汎用テストを
+自作する方法の例**です。実務で頻出する要件は、まず dbt 標準と `dbt_utils` で
+足りるかを確認してください。
+
+| 要件 | 使うもの |
+|---|---|
+| 必須・一意 | `not_null` / `unique`（dbt 標準） |
+| コード値の列挙 | `accepted_values`（dbt 標準） |
+| 外部キー整合性 | `relationships`（dbt 標準） |
+| 複合キーの一意性 | `dbt_utils.unique_combination_of_columns` |
+| 条件付きの整合性 | `dbt_utils.relationships_where`、または任意のテストに `config: where:` |
+| 数値の範囲・非負 | `dbt_utils.accepted_range` |
+| 欠損率の閾値 | `dbt_utils.not_null_proportion` |
+| 空文字の禁止 | `dbt_utils.not_empty_string` |
+| 件数の一致 | `dbt_utils.equal_rowcount` |
+| 日付の順序 | `dbt_utils.expression_is_true` |
+
+上記で足りない要件が出たときに、`tests/generic/` に `{% test %}` を書いて
+部品化します。書き方の要点は「問題のあるレコードを返す SQL を書く」ことだけ
+です。0件なら成功、1件以上なら失敗です。
 
 ---
 
-# Part 1 — Using this package
+# 第1部 — パッケージを使う
 
-Add it to `packages.yml` in your dbt project:
+プロジェクトの `packages.yml` に追加します:
 
 ```yaml
 packages:
   - git: "https://github.com/toshihue/dbt-common-transforms.git"
-    revision: v0.1.0        # always pin to a tag
+    revision: v1.0.0        # 必ずタグを指定する
 ```
 
-Install:
+インストール:
 
 ```sh
 dbt deps
 ```
 
-Call the macros in a model. Prefix with the package name to make the
-dependency obvious at the call site:
+モデル内でマクロを呼び出します。パッケージ名の接頭辞を付けることで、
+呼び出し箇所を見ただけで依存関係が分かります:
 
 ```sql
 -- models/members_cleaned.sql
@@ -57,14 +81,14 @@ select
 from {{ ref('raw_members') }}
 ```
 
-See `examples/` for the complete, runnable version with a seed, a code-master
-join, and tests.
+シード・コードマスタとの結合・テストまで含んだ実行可能な完全版は
+`examples/` にあります。
 
-### Required consumer config
+### 利用側で必須の設定
 
-`constant()` and `standard_constants()` **require** a `constants` var in your
-own `dbt_project.yml`. They raise a compiler error without it — the values are
-organisation-specific and there is no sensible default:
+`constant()` と `standard_constants()` は、利用側プロジェクトの
+`dbt_project.yml` に `constants` var が定義されていないとコンパイルエラーに
+なります。組織固有の値であり、妥当な既定値が存在しないためです:
 
 ```yaml
 vars:
@@ -74,9 +98,9 @@ vars:
     created_by: 'BATCH'
 ```
 
-### Optional overrides
+### 任意の上書き設定
 
-The remaining macros work with no configuration. Override them if you want:
+他のマクロは無設定でも動作します。必要なら上書きしてください:
 
 ```yaml
 vars:
@@ -85,27 +109,32 @@ vars:
   epoch_date: '1900-01-01'
 ```
 
-### Why the package's own vars are not your defaults
+### パッケージ側の vars は利用側の既定値にならない
 
-Vars set in *this package's* `dbt_project.yml` do **not** propagate to your
-project. When a package macro calls `var('x')`, dbt resolves it against the
-**root** project's vars. This catches people out regularly: you install a
-package, see sensible-looking defaults in its `dbt_project.yml`, and they have
-no effect. Package macros that want to work unconfigured must pass a literal
-fallback — `var('unknown_string', 'UNKNOWN')` — which is what the macros here
-do, `constants` excepted.
+**このパッケージ**の `dbt_project.yml` で設定した vars は、利用側の
+プロジェクトには伝播しません。パッケージのマクロが `var('x')` を呼ぶと、
+dbt は**ルートプロジェクト**の vars を参照します。
 
-**Then look at the generated SQL** — this is the single most useful moment:
+これは頻繁に誤解される点です。パッケージをインストールし、その
+`dbt_project.yml` にもっともらしい既定値が書かれているのを見て、それが
+効いていると思い込む、というパターンです。無設定でも動作させたい
+パッケージのマクロは、`var('unknown_string', 'UNKNOWN')` のようにリテラルの
+フォールバックを渡す必要があります。このパッケージも `constants` を除いて
+そうしています。
+
+### 生成された SQL を必ず見る
+
+ここが一番理解の進むポイントです:
 
 ```sh
 dbt compile --select members_cleaned
-# open target/compiled/<your_project>/models/members_cleaned.sql
+# target/compiled/<プロジェクト名>/models/members_cleaned.sql を開く
 ```
 
-A macro is a SQL *generator*, not a function the warehouse calls. Seeing the
-expanded SQL is what makes that click.
+マクロはウェアハウスが実行する関数ではなく、**SQL を生成するもの**です。
+展開後の SQL を見ることで、これが腑に落ちます。
 
-You can also execute a macro standalone, without a model:
+モデルを介さずマクロ単体を実行することもできます:
 
 ```sh
 dbt run-operation my_macro --args '{some_key: some_value}'
@@ -113,10 +142,10 @@ dbt run-operation my_macro --args '{some_key: some_value}'
 
 ---
 
-# Part 2 — Building a package of your own
+# 第2部 — 自分でパッケージを作る
 
-A dbt package is just a git repository containing a dbt project. There is no
-registry to publish to and no build step. Minimum viable package:
+dbt パッケージとは、dbt プロジェクトが入った git リポジトリにすぎません。
+公開先のレジストリもビルド手順もありません。最小構成はこれだけです:
 
 ```
 my-package/
@@ -128,7 +157,7 @@ my-package/
 ## 1. `dbt_project.yml`
 
 ```yaml
-name: 'my_package'          # this is the calling prefix: {{ my_package.my_macro() }}
+name: 'my_package'          # 呼び出し時の接頭辞になります: {{ my_package.my_macro() }}
 version: '0.1.0'
 config-version: 2
 
@@ -139,79 +168,95 @@ seed-paths: ["seeds"]
 test-paths: ["tests"]
 ```
 
-**`require-dbt-version` is not optional if consumers run the dbt Fusion engine.**
-Fusion only installs packages whose range contains `2.0.0`. A package with no
-`require-dbt-version` is rejected at `dbt deps`. This is the single most common
-reason a hand-rolled package fails on Fusion.
+**利用側が dbt Fusion エンジンを使う場合、`require-dbt-version` は必須です。**
+Fusion は範囲に `2.0.0` を含むパッケージしかインストールしません。
+`require-dbt-version` を書いていないパッケージは `dbt deps` の時点で
+拒否されます。自作パッケージが Fusion で動かない原因として最も多いのが
+これです。
 
-A package's `dbt_project.yml` needs no `profile:` — it never connects to a
-warehouse itself. It runs inside the consumer's project, using the consumer's
-connection.
+パッケージの `dbt_project.yml` に `profile:` は不要です。パッケージ自身が
+ウェアハウスに接続することはなく、利用側プロジェクトの中で、利用側の接続を
+使って動作します。
 
-## 2. Write macros
+## 2. マクロを書く
 
 ```sql
 {% macro my_macro(column) %}
-    /* SQL that gets pasted in place of the call */
+    /* 呼び出し箇所にそのまま貼り込まれる SQL */
 {% endmacro %}
 ```
 
-Guidelines that hold up over time:
+長く運用して効いてくる指針:
 
-- **One macro per file**, filename matching the macro name. Easy to find.
-- **Document in a `{# ... #}` block** with a usage example. This is the only
-  documentation most callers will read.
-- **Fail loudly** on bad input — `exceptions.raise_compiler_error()` at compile
-  time beats wrong data at runtime. See `fill_null` and `constant`.
-- **Defaults via `var('name', fallback)`**, so the package works whether or not
-  the consumer configures anything.
-- **Watch string escaping.** `normalize_text` needs a doubled backslash because
-  Snowflake treats `\x` as a string escape. Always verify against the real
-  warehouse — the macro looks fine right up until the SQL reaches the database.
+- **1ファイル1マクロ**、ファイル名はマクロ名と一致させる。探しやすさが違います。
+- **`{# ... #}` ブロックで使用例を書く。** 呼び出す側が読むドキュメントは、
+  実質これだけです。
+- **不正な入力には大きな声で失敗する。** 実行時に誤ったデータが出るより、
+  `exceptions.raise_compiler_error()` でコンパイル時に落ちる方が良いです。
+  `fill_null` と `constant` が例になっています。
+- **既定値は `var('name', フォールバック)` で渡す。** 利用側が設定して
+  いなくても動作します。
+- **文字列のエスケープに注意する。** `normalize_text` がバックスラッシュを
+  2重にしているのは、Snowflake が `\x` をエスケープとして解釈するためです。
+  必ず実際のウェアハウスで検証してください。マクロは、SQL がデータベースに
+  届く直前まで正しく見えます。
 
-## 3. Version with git tags
+## 3. git タグでバージョン管理する
 
 ```sh
 git tag -a v0.1.0 -m "First release"
 git push origin v0.1.0
 ```
 
-Consumers pin `revision: v0.1.0`. Pinning to a tag rather than a branch is what
-stops your package from silently changing under someone else's project. Bump the
-tag on every change; never move an existing tag.
+利用側は `revision: v0.1.0` でピン留めします。ブランチではなくタグを指定
+することが、他プロジェクトの下で自分のパッケージが勝手に変わるのを防ぎます。
+変更のたびにタグを上げ、既存のタグは決して動かさないでください。
 
-## 4. Public vs private
+複数バージョンの共存は、これだけで実現できます。git リポジトリは全履歴を
+保持しているため、`v0.1.0` を参照しているプロジェクトと `v1.0.0` を参照して
+いるプロジェクトが同時に存在できます。
 
-Public repos install over HTTPS with no credentials — simplest by far. Private
-repos need a deploy key or token configured in the consuming environment, which
-is worth doing for real company packages but adds setup you don't want mid-workshop.
+なお **git パッケージはバージョン範囲指定に対応していません。** hub
+パッケージの `version: [">=1.0.0", "<2.0.0"]` のような書き方はできず、
+`revision` は常に単一の参照です。つまり利用側は手動で上げる必要があります。
 
-## 5. Before you share it
+## 4. 公開リポジトリか、プライベートか
 
-- `dbt deps && dbt compile` in a scratch consumer project
-- Inspect the compiled SQL, not just the exit code
-- Run the actual SQL against the warehouse — a macro can compile cleanly and
-  still produce invalid SQL
+公開リポジトリは認証情報なしで HTTPS 経由でインストールできるため、圧倒的に
+簡単です。プライベートリポジトリは利用側の環境にデプロイキーやトークンの
+設定が必要で、実運用の社内パッケージでは行う価値がありますが、ワークショップ
+中に増やしたくない手順ではあります。
+
+## 5. 共有する前に
+
+- 検証用のプロジェクトで `dbt deps && dbt compile` を通す
+- 終了コードだけでなく、生成された SQL を目で確認する
+- 実際にウェアハウスに対して SQL を実行する。マクロは正常にコンパイルされて
+  なお、不正な SQL を生成することがあります
 
 ---
 
-## Note for the dbt platform IDE
+## dbt platform の IDE についての注意
 
-You cannot author a package from the dbt platform IDE — the IDE is bound to its
-project's single repository, so you can't create or edit a second repo there.
-For a workshop with no local dbt install, the practical loop is:
+**IDE からパッケージを作ることはできません。** IDE はプロジェクトに紐づいた
+単一のリポジトリに固定されているため、2つ目のリポジトリを作成・編集できない
+ためです。ローカルに dbt をインストールせずにワークショップを行う場合、
+現実的な流れはこうなります:
 
-1. **Author** the package in the GitHub web UI — create the repo, add files, tag a release
-2. **Consume** it from the dbt platform IDE — add `packages.yml`, run `dbt deps`, call the macros
+1. **作る側** — GitHub の Web UI でリポジトリを作成し、ファイルを追加し、
+   タグを打つ
+2. **使う側** — dbt platform の IDE で `packages.yml` を追加し、`dbt deps`
+   を実行してマクロを呼ぶ
 
-Browser only, and it still exercises the entire create → publish → consume cycle.
+ブラウザだけで、作成 → 公開 → 利用 のサイクル全体を体験できます。
 
-## Compatibility
+## 動作環境
 
-- Validated on **Snowflake**
-- `require-dbt-version: ">=1.10.0,<3.0.0"` — installs on dbt Core 1.10+ and the
-  Fusion engine
-- Uses `regexp_replace`, `initcap`, `upper` and `lower`. All are widely
-  available, but regex whitespace classes and string-escaping rules differ by
-  platform — `normalize_text` in particular is Snowflake-specific in its
-  handling of `\x{3000}`. Re-validate before using on anything else.
+- **Snowflake** で検証済み
+- `require-dbt-version: ">=1.10.0,<3.0.0"` — dbt Core 1.10 以降および
+  Fusion エンジンでインストール可能
+- 使用している関数は `regexp_replace`、`initcap`、`upper`、`lower` です。
+  いずれも広く利用可能ですが、正規表現の空白クラスや文字列エスケープの
+  規則はプラットフォームごとに異なります。特に `normalize_text` の
+  `\x{3000}` の扱いは Snowflake 固有です。他のプラットフォームで使う前に
+  必ず再検証してください。

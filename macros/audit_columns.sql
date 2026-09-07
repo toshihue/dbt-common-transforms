@@ -1,19 +1,19 @@
 {#
     audit_columns: 監査列の共通部品
 
-    Emits a standard set of audit columns. Add it as the last item in a
-    select list — note there is no leading comma, so put the comma before it.
+    標準的な監査列をまとめて出力します。select 句の最後に置いてください。
+    先頭にカンマを付けていないため、直前の項目の後ろにカンマが必要です。
 
-    Usage:
+    使い方:
         select
             customer_id,
             customer_name,
             {{ common_transforms.audit_columns() }}
         from {{ ref('stg_customers') }}
 
-    This is the clearest demonstration of why packaging matters: when you later
-    need a fifth audit column, you change it here and every consuming model
-    picks it up on the next `dbt deps` + run.
+    部品化の効果が最も分かりやすい例です。後から5つ目の監査列を追加したく
+    なったとき、変更するのはこのファイル1箇所だけで、利用側は次回の
+    dbt deps と実行で自動的に反映されます。
 #}
 
 {% macro audit_columns() %}

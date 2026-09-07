@@ -1,12 +1,13 @@
-# Copy this into the root of your dbt project, then run `dbt deps`.
+# このファイルをプロジェクトのルート（dbt_project.yml と同じ階層）に置き、
+# dbt deps を実行してください。models/ 配下に置くと無視されます。
 
 packages:
-  # The community package. Worth installing alongside your own — its
-  # cross-database macros are the canonical example of 部品化 done well.
+  # コミュニティパッケージ。自作パッケージと併せて入れておく価値があります。
+  # クロスデータベース対応のマクロ群は、部品化の優れたお手本です。
   - package: dbt-labs/dbt_utils
     version: 1.4.1
 
-  # Your own package. Always pin `revision` to a tag, never a branch:
-  # a branch can change under you and silently alter a downstream project.
+  # 自作パッケージ。revision には必ずタグを指定してください。ブランチを
+  # 指定すると、自分のコミットなしに下流プロジェクトの出力が変わります。
   - git: "https://github.com/toshihue/dbt-common-transforms.git"
-    revision: v0.1.0
+    revision: v1.0.0
