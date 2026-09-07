@@ -1,5 +1,5 @@
 name: 'common_transforms'
-version: '1.1.0'
+version: '1.0.1'
 config-version: 2
 
 # dbt Fusion エンジンでは必須です。Fusion は require-dbt-version の範囲に
