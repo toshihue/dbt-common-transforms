@@ -120,7 +120,7 @@ columns:
 ```yaml
 packages:
   - git: "https://github.com/toshihue/dbt-common-transforms.git"
-    revision: v1.0.1        # 必ずタグを指定する
+    revision: v1.2.0        # 必ずタグを指定する
 ```
 
 インストール:
