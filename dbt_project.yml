@@ -8,7 +8,6 @@ config-version: 2
 require-dbt-version: ">=1.10.0,<3.0.0"
 
 macro-paths: ["macros"]
-seed-paths: ["seeds"]
 test-paths: ["tests"]
 
 # 重要: ここで設定した vars は利用側プロジェクトには伝播しません。
@@ -18,7 +17,7 @@ test-paths: ["tests"]
 # ありません。
 #
 # そのため各マクロは var() の2引数形式 var('unknown_string', 'UNKNOWN') で
-# リテラルのフォールバックを渡しており、利用側が何も設定しなくても動作します。
+# 固定値のフォールバックを渡しており、利用側が何も設定しなくても動作します。
 #
 # 例外は `constants` です。system_code や created_by は組織固有の値であり、
 # 安全な既定値が存在しません。黙って既定値を使うより失敗させるべきなので、
@@ -32,15 +31,3 @@ vars:
     system_code: 'DEMO01'
     record_type: '1'
     created_by: 'BATCH'
-
-seeds:
-  common_transforms:
-    +quote_columns: false
-    region_master:
-      # region_code は必ず文字列型にします。型推論に任せると '01' が数値の
-      # 1 として読み込まれ、varchar のコードとの結合が成立しなくなります。
-      +column_types:
-        region_code: varchar(2)
-        region_name_ja: varchar(100)
-        region_name_en: varchar(100)
-        sort_order: integer

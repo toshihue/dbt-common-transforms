@@ -31,16 +31,19 @@
     落ちます。0埋めのつもりで使って、想定より長いデータが混ざっていた
     場合、この挙動はデータ欠損として現れます。
 
-    そのため、桁数が意味を持つ列には has_length テストを併せて掛けて
-    ください。切り捨てが起きていれば検出できます:
+    切り捨てを防ぐには、zero_pad() を適用する前の列で最大長を検証してください。
+    dbt_expectations を利用する場合は、次のように書けます:
 
         columns:
           - name: region_code
             data_tests:
-              - common_transforms.has_length:
+              - dbt_expectations.expect_column_value_lengths_to_be_between:
                   arguments:
-                    length: 2
+                    min_value: 0
+                    max_value: 2
 
+    変換後の列が固定長であることは
+    dbt_expectations.expect_column_value_lengths_to_equal で検証できます。
     外部パッケージについて:
     0埋めそのものを提供するマクロは dbt 標準にも dbt_utils にもありません。
     lpad() はほとんどのウェアハウスが備える標準的な SQL 関数のため、
@@ -51,9 +54,9 @@
 
 {% macro zero_pad(column, length, pad='0') %}
 
-    {%- if length is not number or length < 1 -%}
+    {%- if length is not number or length < 1 or length != (length | int) -%}
         {{ exceptions.raise_compiler_error(
-            "zero_pad: length must be a positive number, got '" ~ length ~ "'"
+            "zero_pad: length must be a positive integer, got '" ~ length ~ "'"
         ) }}
     {%- endif -%}
 
@@ -63,6 +66,19 @@
         ) }}
     {%- endif -%}
 
-    lpad(cast({{ column }} as {{ dbt.type_string() }}), {{ length }}, '{{ pad }}')
+    {#
+        column を先に文字列へ変換するのは、数値として読み込まれたコードにも
+        先頭の埋め文字を付けられるようにするためです。dbt.type_string() を使うことで、
+        実行先アダプターに対応する文字列型へ展開されます。その後 lpad() で指定桁数に
+        そろえます。
+
+        Jinja 展開後の例（Snowflake）:
+          {{ common_transforms.zero_pad('region_code', 2) }}
+          -> lpad(cast(region_code as varchar), 2, '0')
+    #}
+    {# pad がシングルクォートでもSQL文字列を閉じないよう、2つ重ねてエスケープします。 #}
+    {%- set escaped_pad = pad | replace("'", "''") -%}
+
+    lpad(cast({{ column }} as {{ dbt.type_string() }}), {{ length }}, '{{ escaped_pad }}')
 
 {% endmacro %}

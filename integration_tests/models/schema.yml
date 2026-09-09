@@ -1,0 +1,90 @@
+version: 2
+
+models:
+  - name: members_cleaned
+    description: common_transforms の全マクロを実行し、期待値を検証するモデル。
+
+    columns:
+      - name: member_id
+        description: 主キー。
+        data_tests:
+          - unique
+          - not_null
+
+      - name: padded_member_id
+        description: member_id を4桁に0埋めした値。
+        data_tests:
+          - unique
+          - not_null
+
+      - name: member_name
+        description: 空白を正規化し、initcapを適用した氏名。
+
+      - name: email
+        description: 小文字に統一したメールアドレス。
+        data_tests:
+          - not_null
+
+      - name: member_code
+        description: 大文字に統一したコード。
+        data_tests:
+          - unique
+          - not_null
+
+      - name: region_code
+        description: NULLをマスタに実在する不明コード99で補完した地域コード。
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('region_master')
+                field: region_code
+          - common_transforms.placeholder_requires_reason:
+              arguments:
+                placeholder: '99'
+                reason_column: region_unknown_reason
+
+      - name: region_unknown_reason
+        description: 地域コードを不明コード99に補完した理由。
+
+      - name: region_name_ja
+        data_tests:
+          - not_null
+
+      - name: order_count
+        data_tests:
+          - not_null
+
+      - name: last_login_date
+        data_tests:
+          - not_null
+
+      - name: source_system_code
+        description: constant() が出力する単一定数。
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['KIRIN01']
+
+      - name: system_code
+        description: standard_constants() が出力する定数。
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['KIRIN01']
+
+      - name: dbt_loaded_at
+        data_tests:
+          - not_null
+
+      - name: dbt_invocation_id
+        data_tests:
+          - not_null
+
+      - name: dbt_target_name
+        data_tests:
+          - not_null
+
+      - name: dbt_target_schema
+        data_tests:
+          - not_null

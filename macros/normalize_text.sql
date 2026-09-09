@@ -18,7 +18,7 @@
        regexp_replace(col, '\\s+', ' ') は「山田　太郎」をそのまま返します。
        レビューをすり抜けやすい典型的なバグです。
     2. バックスラッシュを2重にしているのは意図的です。Snowflake は文字列
-       リテラル中の \x をエスケープとして解釈するため、1重だと
+       SQLリテラル（固定値）中の \x をエスケープとして解釈するため、1重だと
        「Invalid hex escape sequence '\x'」で失敗します。2重にすることで
        正規表現エンジンには \x{3000} が渡ります。
        文字クラスに全角スペースをそのまま書いても動作しますが、ソース
@@ -26,5 +26,17 @@
 #}
 
 {% macro normalize_text(column) %}
+    {#
+        regexp_replace() で半角・全角を含む連続空白を半角スペース1つへ圧縮し、
+        trim() で前後の空白を除去します。最後に nullif(..., '') を適用するのは、
+        空白だけだった値を意味のある文字列として残さず NULL に統一するためです。
+
+        Jinja 展開後の例:
+          {{ common_transforms.normalize_text('customer_name') }}
+          -> nullif(
+               trim(regexp_replace(customer_name, '[[:space:]\\x{3000}]+', ' ')),
+               ''
+             )
+    #}
     nullif(trim(regexp_replace({{ column }}, '[[:space:]\\x{3000}]+', ' ')), '')
 {% endmacro %}

@@ -1,0 +1,18 @@
+# common_transforms を利用側プロジェクトとして実行検証するための設定です。
+# dbt Platform では Project subdirectory に integration_tests を指定します。
+# 検証モデルをパッケージ本体の models/ に置かないことで、利用者の DAG へ
+# テスト用ノードが混ざるのを防ぎます。
+
+name: 'common_transforms_integration_tests'
+version: '1.0.0'
+config-version: 2
+
+profile: 'common_transforms_integration_tests'
+
+require-dbt-version: ">=1.10.0,<3.0.0"
+
+vars:
+  constants:
+    system_code: 'KIRIN01'
+    record_type: '1'
+    created_by: "O'Brien"
