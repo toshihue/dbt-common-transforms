@@ -13,14 +13,38 @@
 | `normalize_text(column)` | マクロ | 文字列加工 — 前後空白の除去と、全角スペースを含む連続空白の圧縮 |
 | `change_case(column, case)` | マクロ | 文字列加工 — lower / upper / initcap |
 | `fill_null(column, kind)` | マクロ | NULL埋め — vars から型に応じた既定値 |
+| `zero_pad(column, length)` | マクロ | 0埋め — 桁数の足りない値を左から埋めて固定長にそろえる |
 | `audit_columns()` | マクロ | 標準的な監査列 |
 | `region_master.csv` | シード | 固定値の集合 — コードマスタをバージョン管理下のデータとして持つ |
 | `non_negative` | 汎用テスト | 負数を検出（自作テストの入門例） |
 | `not_null_or_placeholder` | 汎用テスト | NULL **または** プレースホルダのまま残っている行を検出 |
+| `has_length` | 汎用テスト | 桁数（文字列長）が指定どおりかを検証 — `zero_pad` の桁落ち検出用 |
 
 固定値セット と NULL埋め をあえて別部品にしています。`constant()` は
 **常に**リテラルを設定し、`fill_null()` は**入力が NULL のときだけ**置換
 します。この2つを混同すると、原因の分かりにくいデータ不具合につながります。
+
+`zero_pad()` と `has_length` も対で使う想定です。`lpad()` は入力が指定桁数
+より長いとき、エラーを出さずに右側を切り捨てます。0埋めした列に `has_length`
+を掛けておくと、この静かな桁落ちを検出できます。
+
+### あえて収録していないもの
+
+| 要件 | 使うもの |
+|---|---|
+| 文字列結合 | `dbt.concat(['a', 'b'])` — **dbt 標準**の cross-database マクロ。パッケージ不要です |
+| 桁数の検証（範囲指定） | `dbt_expectations.expect_column_value_lengths_to_be_between` |
+
+`dbt.concat()` は dbt 本体に同梱されている cross-database マクロで、
+`dbt_utils` を入れる必要すらありません。ウェアハウスごとの差異（`||` と
+`concat()`）を吸収してくれます:
+
+```sql
+{{ dbt.concat(['last_name', "' '", 'first_name']) }} as full_name
+```
+
+リテラルを混ぜる場合、クォートの入れ子に注意してください。上の例のように
+Jinja の文字列の中に SQL のシングルクォートを書きます。
 
 ## 汎用テストの自作について
 
@@ -38,6 +62,7 @@
 | 数値の範囲・非負 | `dbt_utils.accepted_range` |
 | 欠損率の閾値 | `dbt_utils.not_null_proportion` |
 | 空文字の禁止 | `dbt_utils.not_empty_string` |
+| 桁数（文字列長）の検証 | `dbt_expectations.expect_column_value_lengths_to_equal`、または同梱の `has_length` |
 | 件数の一致 | `dbt_utils.equal_rowcount` |
 | 日付の順序 | `dbt_utils.expression_is_true` |
 

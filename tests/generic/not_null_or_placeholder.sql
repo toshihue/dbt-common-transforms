@@ -19,7 +19,8 @@
             data_tests:
               - common_transforms.not_null_or_placeholder
               - common_transforms.not_null_or_placeholder:
-                  placeholder: '未設定'
+                  arguments:
+                    placeholder: '未設定'
 
     model と column_name は dbt が自動的に渡します。指定できる引数は
     placeholder だけです。
