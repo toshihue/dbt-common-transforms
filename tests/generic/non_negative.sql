@@ -50,7 +50,8 @@
     参考: 同じことは dbt_utils でも書けます。
 
         - dbt_utils.accepted_range:
-            min_value: 0
+            arguments:
+              min_value: 0
 
     実運用では dbt_utils で足りる場面が多いですが、「標準や dbt_utils で
     足りない要件が出たときに自分で部品化できる」ことを学ぶのが目的です。

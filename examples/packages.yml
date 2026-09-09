@@ -1,13 +1,16 @@
-# このファイルをプロジェクトのルート（dbt_project.yml と同じ階層）に置き、
-# dbt deps を実行してください。models/ 配下に置くと無視されます。
-
+# このプロジェクトは、パッケージ本体をリポジトリ相対の local 参照で
+# インストールします。dbt は dbt_packages/ にシンボリックリンクを張る
+# ため、インストールされるのは「作業ツリーそのもの」です。タグを打つ前の
+# 編集をそのまま検証できます。
 packages:
-  # コミュニティパッケージ。自作パッケージと併せて入れておく価値があります。
-  # クロスデータベース対応のマクロ群は、部品化の優れたお手本です。
-  - package: dbt-labs/dbt_utils
-    version: 1.4.1
+  - local: ../
 
-  # 自作パッケージ。revision には必ずタグを指定してください。ブランチを
-  # 指定すると、自分のコミットなしに下流プロジェクトの出力が変わります。
-  - git: "https://github.com/toshihue/dbt-common-transforms.git"
-    revision: v1.0.0
+# 利用側プロジェクトでの書き方はこちらです（examples/README.md 参照）。
+# 実運用では必ずタグを指定してください。ブランチを指定すると、自分の
+# コミットなしに下流プロジェクトの出力が変わります。
+#
+# packages:
+#   - package: dbt-labs/dbt_utils
+#     version: 1.4.1
+#   - git: "https://github.com/toshihue/dbt-common-transforms.git"
+#     revision: v1.0.1

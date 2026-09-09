@@ -45,8 +45,9 @@ models:
         data_tests:
           - not_null
           - relationships:
-              to: ref('region_master')
-              field: region_code
+              arguments:
+                to: ref('region_master')
+                field: region_code
 
       - name: region_name_ja
         description: region_master シードから解決した地域名。
