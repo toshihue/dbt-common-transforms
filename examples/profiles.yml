@@ -1,0 +1,18 @@
+user:
+  outputs:
+    default:
+      account: zna84829
+      auth_type: keypair
+      client_session_keep_alive: false
+      connect_retries: 3
+      connect_timeout: 30
+      database: kirin
+      private_key_path: /tmp/.dbt/keyfile.pem
+      retry_on_database_errors: true
+      role: kirin_poc_role
+      schema: dbt_tito
+      threads: 6
+      type: snowflake
+      user: kirin_poc_user
+      warehouse: transforming
+  target: default

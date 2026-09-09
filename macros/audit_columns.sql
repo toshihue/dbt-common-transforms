@@ -17,6 +17,18 @@
 #}
 
 {% macro audit_columns() %}
+    {#
+        ロード時刻は SQL の current_timestamp() として残し、クエリ実行時刻を記録します。
+        invocation_id・target・this は dbt の実行コンテキストからコンパイル時に展開し、
+        どの dbt 実行がどのターゲット／スキーマへ書き込んだかを追跡できる列にします。
+
+        Jinja 展開後の例（実行ごとの値は例示）:
+          {{ common_transforms.audit_columns() }}
+          -> current_timestamp() as dbt_loaded_at,
+             '2f6c1b5a-0000-0000-0000-123456789abc' as dbt_invocation_id,
+             'default' as dbt_target_name,
+             'analytics' as dbt_target_schema
+    #}
     current_timestamp()               as dbt_loaded_at,
     '{{ invocation_id }}'             as dbt_invocation_id,
     '{{ target.name }}'               as dbt_target_name,

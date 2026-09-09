@@ -1,0 +1,3 @@
+# 作業ツリーの common_transforms を利用側プロジェクトとして導入します。
+packages:
+  - local: ../

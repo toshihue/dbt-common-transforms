@@ -1,0 +1,39 @@
+version: 2
+
+seeds:
+  - name: raw_members
+    description: common_transforms の入力境界を検証するためのfixture。
+
+    config:
+      column_types:
+        member_id: integer
+        member_name: varchar(200)
+        email: varchar(200)
+        postal_code: varchar(20)
+        member_code: varchar(20)
+        region_code: varchar(2)
+        order_count: integer
+        last_login_date: date
+        region_unknown_reason: varchar(200)
+
+    columns:
+      - name: member_id
+        data_tests:
+          - unique
+          - not_null
+
+  - name: region_master
+    description: integration test専用の地域コードマスタfixture。
+
+    config:
+      column_types:
+        region_code: varchar(2)
+        region_name_ja: varchar(100)
+        region_name_en: varchar(100)
+        sort_order: integer
+
+    columns:
+      - name: region_code
+        data_tests:
+          - unique
+          - not_null

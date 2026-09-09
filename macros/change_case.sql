@@ -30,6 +30,16 @@
         ) }}
     {%- endif -%}
 
+    {#
+        検証済みの case を SQL 関数名として展開し、同じ処理で upper / lower /
+        initcap を切り替えます。関数名を文字列のSQLリテラル（固定値）として渡すのではなく、
+        {{ case }}({{ column }}) の形にすることで、ウェアハウスのネイティブ関数呼び出しを
+        生成します。
+
+        Jinja 展開後の例:
+          {{ common_transforms.change_case('email', case='lower') }}
+          -> lower(email)
+    #}
     {{ case }}({{ column }})
 
 {% endmacro %}
